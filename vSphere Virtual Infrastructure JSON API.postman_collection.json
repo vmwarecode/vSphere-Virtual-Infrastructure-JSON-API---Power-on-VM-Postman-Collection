@@ -1,0 +1,905 @@
+{
+	"info": {
+		"_postman_id": "36fba027-2740-4f31-87f1-7553c4fa823c",
+		"name": "vSphere Virtual Infrastructure JSON API",
+		"description": "A collection of API invocations showcasing the Virtual Infrastructure JSON API (introduced in 8.0 U1)\n\nThis collection will attach a standalone host to a vCenter deployment, create a virtual machine on the host and power it on.\n\nRequirements:\n\n- 8.0 U1 vCenter instance\n- A compatible standalone ESXi host (6.7 or later) with an attached datastore\n    \n\nThe name of the host's datastore must be set into the `datastore-name` variable.\n\nThe `AddStandaloneHost` request may fail if the authenticity of the host's SSL certificate can not be verified by the vCenter instance. See the request's documentation for possible workarounds.\n\nFollowing a successful run, in order to be able to rerun all the requests, the actions to perform are:\n\n1. Power off the \"JSON VM\" virtual machine\n2. Delete the \"JSON VM\" from disk\n3. Delete the \"JSON Datacenter\" datacenter",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "10624355"
+	},
+	"item": [
+		{
+			"name": "Setup",
+			"item": [
+				{
+					"name": "ServiceInstanceContent",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();",
+									"",
+									"const rootFolderMoid = response.rootFolder.value;",
+									"pm.variables.set(\"rootFolderMoid\", rootFolderMoid);",
+									"",
+									"const fileManagerMoid = response.fileManager.value;",
+									"pm.variables.set(\"fileManagerMoid\", fileManagerMoid);",
+									"",
+									"const virtualDiskManagerMoid = response.virtualDiskManager.value;",
+									"pm.variables.set(\"virtualDiskManagerMoid\", virtualDiskManagerMoid);",
+									"",
+									"const sessionManagerMoid = response.sessionManager.value;",
+									"pm.variables.set(\"sessionManagerMoid\", sessionManagerMoid);",
+									"",
+									"const searchIndexMoid = response.searchIndex.value;",
+									"pm.variables.set(\"searchIndexMoid\", searchIndexMoid);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base-url}}/ServiceInstance/ServiceInstance/content",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"ServiceInstance",
+								"ServiceInstance",
+								"content"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.ServiceInstance.html)\n\nRetrieve managed object IDs, needed to construct URLs."
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let sessionId = pm.response.headers.get('vmware-api-session-id');",
+									"pm.variables.set(\"sessionId\", sessionId);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"password\": \"{{vc-password}}\",\r\n    \"userName\": \"{{vc-userName}}\"\r\n}"
+						},
+						"url": {
+							"raw": "{{base-url}}/SessionManager/{{sessionManagerMoid}}/Login",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"SessionManager",
+								"{{sessionManagerMoid}}",
+								"Login"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.SessionManager.html#login)\n\nEstablish a vCenter session with the specified username and password.\n\nThe session ID is placed in the `sessionId` variable in order to allow further requests to put it in the `vmware-api-session-id` HTTP header for authentication.\n\nThe session is valid only in the context of the Management API and can not be used to invoke operations on `/api`."
+					},
+					"response": []
+				}
+			],
+			"description": "Populate managed object IDs and establish a session on `/sdk`.\n\nThe session is valid only in the context of the Management API and can not be used to invoke operations on `/api`.",
+			"auth": {
+				"type": "noauth"
+			}
+		},
+		{
+			"name": "Add a Host",
+			"item": [
+				{
+					"name": "CreateDatacenter",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();",
+									"const datacenterMoid = response.value;",
+									"pm.variables.set(\"datacenterMoid\", datacenterMoid);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"name\": \"JSON Datacenter\"\r\n}"
+						},
+						"url": {
+							"raw": "{{base-url}}/Folder/{{rootFolderMoid}}/CreateDatacenter",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"Folder",
+								"{{rootFolderMoid}}",
+								"CreateDatacenter"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.Folder.html#createDatacenter)\n\nCreate a datacenter and populate the `datacenterMoid` variable with its Managed Object ID."
+					},
+					"response": []
+				},
+				{
+					"name": "HostFolder",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();",
+									"const hostFolderMoid = response.value;",
+									"pm.variables.set(\"hostFolderMoid\", hostFolderMoid);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base-url}}/Datacenter/{{datacenterMoid}}/hostFolder",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"Datacenter",
+								"{{datacenterMoid}}",
+								"hostFolder"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.Datacenter.html)\n\nRetrieve the Managed Object ID of the datacenter's host folder into `hostFolderMoid`."
+					},
+					"response": []
+				},
+				{
+					"name": "AddStandaloneHost",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();",
+									"const addHostTaskMoid = response.value;",
+									"pm.variables.set(\"addHostTaskMoid\", addHostTaskMoid);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"addConnected\": true,\r\n    \"spec\": {\r\n        \"_typeName\": \"HostConnectSpec\",\r\n        \"hostName\": \"{{esx-host}}\",\r\n        \"password\": \"{{esx-password}}\",\r\n        \"force\": false,\r\n        \"userName\": \"{{esx-username}}\"\r\n    }\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base-url}}/Folder/{{hostFolderMoid}}/AddStandaloneHost_Task",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"Folder",
+								"{{hostFolderMoid}}",
+								"AddStandaloneHost_Task"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.Folder.html#addStandaloneHost)\n\nInitiate a task to add the host to the newly created datacenter and populate the Managed Object ID of the task into `addHostTaskMoid`.\n\nThe task may fail if the authenticity of the host's SSL certificate can not be verified by the vCenter instance. One possible workaround is to add the host to a datacenter on the vCenter instance through its user interface. Another is to put the host's thumbprint (present in the task info in the next request) into the `spec`:\n\n``` json\n{\n    \"addConnected\": true,\n    \"spec\": {\n        \"_typeName\": \"HostConnectSpec\",\n        \"hostName\": \"{{esx-host}}\",\n        \"password\": \"{{esx-password}}\",\n        \"force\": false,\n        \"userName\": \"{{esx-username}}\",\n        \"sslThumbprint\": \"58:44...\"\n    }\n}\n\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "AddHostTaskInfo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();",
+									"let state = response.state;",
+									"",
+									"if (state == \"queued\" || state == \"running\") {",
+									"    postman.setNextRequest(pm.info.requestId);",
+									"} else {",
+									"    pm.test(\"Successful task\", function () {",
+									"        postman.setNextRequest(null);",
+									"        pm.expect(state).to.equal(\"success\");",
+									"        postman.setNextRequest();",
+									"    });",
+									"",
+									"    const computeResourceMoid = response.result.value;",
+									"    pm.variables.set(\"computeResourceMoid\", computeResourceMoid);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"setTimeout(function(){}, 10000);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base-url}}/Task/{{addHostTaskMoid}}/info",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"Task",
+								"{{addHostTaskMoid}}",
+								"info"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.Task.html)\n\nWait for the add-host task to complete and retrieve the Managed Object ID of the newly created compute-resource into `computeResourceMoid`."
+					},
+					"response": []
+				}
+			],
+			"description": "Create a datacenter and add a host to it.",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Create a VM",
+			"item": [
+				{
+					"name": "ResourcePool",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();",
+									"const resourcePool = JSON.stringify(response);",
+									"pm.variables.set(\"resourcePool\", resourcePool);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base-url}}/ComputeResource/{{computeResourceMoid}}/resourcePool",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"ComputeResource",
+								"{{computeResourceMoid}}",
+								"resourcePool"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.ComputeResource.html)\n\nRetrieve the resource pool Managed Object of the newly created compute-resource into `resourcePool`."
+					},
+					"response": []
+				},
+				{
+					"name": "DatastoreFolder",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();",
+									"const datastoreFolder = JSON.stringify(response);",
+									"pm.variables.set(\"datastoreFolder\", datastoreFolder);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base-url}}/Datacenter/{{datacenterMoid}}/datastoreFolder",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"Datacenter",
+								"{{datacenterMoid}}",
+								"datastoreFolder"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.Datacenter.html)\n\nRetrieve the datastore folder Managed Object of the newly created datacenter into `datastoreFolder`.\n\nThe datastore folder is needed in order to look for a datastore by its name."
+					},
+					"response": []
+				},
+				{
+					"name": "SearchForDatastore",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();\r",
+									"const datastore = JSON.stringify(response);;\r",
+									"pm.variables.set(\"datastore\", datastore);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"entity\": {{datastoreFolder}},\r\n    \"name\": \"{{datastore-name}}\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base-url}}/SearchIndex/{{searchIndexMoid}}/FindChild",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"SearchIndex",
+								"{{searchIndexMoid}}",
+								"FindChild"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.SearchIndex.html)\n\nRetrieve the datastore Managed Object into `datastore` by looking for a datastore with the specified name into the datacenter's datastore folder."
+					},
+					"response": []
+				},
+				{
+					"name": "NetworkFolder",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();",
+									"const networkFolder = JSON.stringify(response);",
+									"pm.variables.set(\"networkFolder\", networkFolder);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base-url}}/Datacenter/{{datacenterMoid}}/networkFolder",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"Datacenter",
+								"{{datacenterMoid}}",
+								"networkFolder"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.Datacenter.html)\n\nRetrieve the network folder Managed Object of the newly created datacenter into `networkFolder`.\n\nSimilar to finding the datastore by name, the datacenter's network folder's Managed Object is needed to find a network by name."
+					},
+					"response": []
+				},
+				{
+					"name": "SearchForNetwork",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();\r",
+									"const network = JSON.stringify(response);;\r",
+									"pm.variables.set(\"network\", network);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"entity\": {{networkFolder}},\r\n    \"name\": \"{{network-name}}\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base-url}}/SearchIndex/{{searchIndexMoid}}/FindChild",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"SearchIndex",
+								"{{searchIndexMoid}}",
+								"FindChild"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.SearchIndex.html)\n\nRetrieve the network Managed Object into `network` by looking for a network with the specified name into the datacenter's network folder."
+					},
+					"response": []
+				},
+				{
+					"name": "VmFolder",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();",
+									"const vmFolderMoid = response.value;",
+									"pm.variables.set(\"vmFolderMoid\", vmFolderMoid);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base-url}}/Datacenter/{{datacenterMoid}}/vmFolder",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"Datacenter",
+								"{{datacenterMoid}}",
+								"vmFolder"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.Datacenter.html)\n\nRetrieve the Managed Object ID of the datacenter's VM folder into `vmFolderMoid`."
+					},
+					"response": []
+				},
+				{
+					"name": "CreateVm",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();",
+									"const createVmTaskMoid = response.value;",
+									"pm.variables.set(\"createVmTaskMoid\", createVmTaskMoid);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"pool\": {{resourcePool}},\n    \"config\": {\n        \"numCPUs\": 2,\n        \"numCoresPerSocket\": 2,\n        \"memoryMB\": 1024,\n        \"deviceChange\": [\n            {\n                \"_typeName\": \"VirtualDeviceConfigSpec\",\n                \"operation\": \"add\",\n                \"device\": {\n                    \"_typeName\": \"VirtualLsiLogicSASController\",\n                    \"key\": 1000,\n                    \"busNumber\": 0,\n                    \"sharedBus\": \"noSharing\"\n                }\n            },\n            {\n                \"_typeName\": \"VirtualDeviceConfigSpec\",\n                \"operation\": \"add\",\n                \"fileOperation\": \"create\",\n                \"device\": {\n                    \"backing\": {\n                        \"fileName\": \"[{{datastore-name}}]\",\n                        \"diskMode\": \"persistent\",\n                        \"_typeName\": \"VirtualDiskFlatVer2BackingInfo\"\n                    },\n                    \"controllerKey\": 1000,\n                    \"unitNumber\": 0,\n                    \"_typeName\": \"VirtualDisk\",\n                    \"capacityInKB\": 40960,\n                    \"key\": 2000\n                }\n            },\n            {\n                \"_typeName\": \"VirtualDeviceConfigSpec\",\n                \"operation\": \"add\",\n                \"device\": {\n                    \"connectable\": {\n                        \"connected\": true,\n                        \"allowGuestControl\": false,\n                        \"_typeName\": \"VirtualDeviceConnectInfo\",\n                        \"startConnected\": true\n                    },\n                    \"backing\": {\n                        \"_typeName\": \"VirtualEthernetCardNetworkBackingInfo\",\n                        \"deviceName\": \"{{network-name}}\",\n                        \"network\": {{network}}\n                    },\n                    \"addressType\": \"generated\",\n                    \"_typeName\": \"VirtualE1000\",\n                    \"key\": 2001\n                }\n            }\n        ],\n        \"name\": \"JSON VM\",\n        \"files\": {\n            \"_typeName\": \"VirtualMachineFileInfo\",\n            \"vmPathName\": \"[{{datastore-name}}]\"\n        },\n        \"_typeName\": \"VirtualMachineConfigSpec\",\n        \"guestId\": \"winNetStandard64Guest\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base-url}}/Folder/{{vmFolderMoid}}/CreateVM_Task",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"Folder",
+								"{{vmFolderMoid}}",
+								"CreateVM_Task"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.Folder.html#createVm)\n\nInitiate a task for creating a VM and place the Managed Object ID of the task into `createVmTaskMoid`."
+					},
+					"response": []
+				},
+				{
+					"name": "CreateVmTaskInfo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();",
+									"let state = response.state;",
+									"",
+									"if (state == \"queued\" || state == \"running\") {",
+									"    postman.setNextRequest(pm.info.requestId);",
+									"} else {",
+									"    pm.test(\"Successful task\", function () {",
+									"        postman.setNextRequest(null);",
+									"        pm.expect(state).to.equal(\"success\");",
+									"        postman.setNextRequest();",
+									"    });",
+									"    ",
+									"    const vmMoid = response.result.value;",
+									"    pm.variables.set(\"vmMoid\", vmMoid);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"setTimeout(function(){}, 2000);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base-url}}/Task/{{createVmTaskMoid}}/info",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"Task",
+								"{{createVmTaskMoid}}",
+								"info"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.Task.html)\n\nWait for the create-vm task to complete and retrieve the Managed Object ID of the newly created virtual machine into `vmMoid`."
+					},
+					"response": []
+				}
+			],
+			"description": "Create a virtual machine and power it on."
+		},
+		{
+			"name": "Power-on the VM",
+			"item": [
+				{
+					"name": "VirtualMachinePowerOn",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();\r",
+									"const powerOnVmTaskMoid = response.value;\r",
+									"pm.variables.set(\"powerOnVmTaskMoid\", powerOnVmTaskMoid);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{base-url}}/VirtualMachine/{{vmMoid}}/PowerOnVM_Task",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"VirtualMachine",
+								"{{vmMoid}}",
+								"PowerOnVM_Task"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.VirtualMachine.html#powerOn)\n\nInitiate a task to power on the virtual machine. Retrieve the Managed Object ID of the task into `powerOnVmTaskMoid`."
+					},
+					"response": []
+				},
+				{
+					"name": "PowerOnVmTaskInfo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();",
+									"let state = response.state;",
+									"",
+									"if (state == \"queued\" || state == \"running\") {",
+									"    postman.setNextRequest(pm.info.requestId);",
+									"} else {",
+									"    pm.test(\"Successful task\", function () {",
+									"        postman.setNextRequest(null);",
+									"        pm.expect(state).to.equal(\"success\");",
+									"        postman.setNextRequest();",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"setTimeout(function(){}, 2000);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base-url}}/Task/{{powerOnVmTaskMoid}}/info",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"Task",
+								"{{powerOnVmTaskMoid}}",
+								"info"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.Task.html)\n\nWait for the power-on-vm task to complete."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Logout",
+			"item": [
+				{
+					"name": "Logout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.variables.unset(\"sessionId\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base-url}}/SessionManager/{{sessionManagerMoid}}/Logout",
+							"host": [
+								"{{base-url}}"
+							],
+							"path": [
+								"SessionManager",
+								"{{sessionManagerMoid}}",
+								"Logout"
+							]
+						},
+						"description": "[API Reference](https://vdc-download.vmware.com/vmwb-repository/dcr-public/c476b64b-c93c-4b21-9d76-be14da0148f9/04ca12ad-59b9-4e1c-8232-fd3d4276e52c/SDK/vsphere-ws/docs/ReferenceGuide/vim.SessionManager.html#logout)\n\nTerminate the current `/sdk` session and unset the `sessionId` variable."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "apikey",
+		"apikey": [
+			{
+				"key": "value",
+				"value": "{{sessionId}}",
+				"type": "string"
+			},
+			{
+				"key": "key",
+				"value": "vmware-api-session-id",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "vc-host",
+			"value": ""
+		},
+		{
+			"key": "vc-userName",
+			"value": ""
+		},
+		{
+			"key": "vc-password",
+			"value": ""
+		},
+		{
+			"key": "esx-host",
+			"value": ""
+		},
+		{
+			"key": "esx-username",
+			"value": ""
+		},
+		{
+			"key": "esx-password",
+			"value": ""
+		},
+		{
+			"key": "datastore-name",
+			"value": ""
+		},
+		{
+			"key": "network-name",
+			"value": "VM Network"
+		},
+		{
+			"key": "base-path",
+			"value": "sdk"
+		},
+		{
+			"key": "namespace",
+			"value": "vim25"
+		},
+		{
+			"key": "version",
+			"value": "8.0.1.0"
+		},
+		{
+			"key": "base-url",
+			"value": "https://{{vc-host}}/{{base-path}}/{{namespace}}/{{version}}"
+		}
+	]
+}
